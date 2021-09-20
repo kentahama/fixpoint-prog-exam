@@ -12,21 +12,40 @@ def read_input(s):
 def print_downtime(ip, time_from, time_to="now"):
     print(f"{ip} has been down from {time_from} to {time_to}")
 
-def main():
-    down = {}
+class ServerWatcher():
+    def __init__(self, torelance):
+        self.torelance = torelance
+        self.timeouts = {}
+    def ping_response(self, date, addr, latency):
+        if addr in self.timeouts:
+            count, start = self.timeouts[addr]
+            if count >= self.torelance:
+                print_downtime(addr, start, date)
+            del self.timeouts[addr]
+    def ping_no_response(self, date, addr):
+        if addr not in self.timeouts:
+            self.timeouts[addr] = (1, date)
+        else:
+            count, start = self.timeouts[addr]
+            count += 1
+            self.timeouts[addr] = count, start
+    def finalize(self):
+        for addr in self.timeouts:
+            count, start = self.timeouts[addr]
+            if count >= self.torelance:
+                print_downtime(addr, start)
+
+def main(argv):
+    _, n = argv
+    torelance = int(n)
+    watcher = ServerWatcher(torelance)
     for line in sys.stdin:
         date, addr, resp = read_input(line.strip())
-        if not resp:
-            if addr not in down:
-                down[addr] = date
+        if resp:
+            watcher.ping_response(date, addr, resp)
         else:
-            if addr in down:
-                start = down[addr]
-                print_downtime(addr, start, date)
-                del down[addr]
-    for addr in down:
-        start = down[addr]
-        print_downtime(addr, start)
+            watcher.ping_no_response(date, addr)
+    watcher.finalize()
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
