@@ -42,7 +42,7 @@ class Server:
                 self.overload_from = date
         else:
             if self.overload_from:
-                self.print_overload()
+                self.print_overload(date)
                 self.overload_from = None
 
 class ServerWatcher():
