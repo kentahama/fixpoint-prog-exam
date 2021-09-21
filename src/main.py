@@ -13,19 +13,11 @@ def read_input(s):
 
 def main(argv):
     _, n, m, t = argv
-    timeout_torelance = int(n)
-    overload_torelance = int(m)
-    overload_threashold = int(t)
-    watcher = ServerWatcher(timeout_torelance, overload_torelance)
+    n, m, t = map(int, (n, m, t))
+    watcher = ServerWatcher(n, m, t)
     for line in sys.stdin:
         date, addr, resp = read_input(line.strip())
-        if resp:
-            if resp > overload_threashold:
-                watcher.ping_abnormal(date, addr, 'overload')
-            else:
-                watcher.ping_response(date, addr)
-        else:
-            watcher.ping_abnormal(date, addr, 'timeout')
+        watcher.ping(date, addr, resp)
     watcher.finalize()
 
 if __name__ == '__main__':

@@ -1,77 +1,57 @@
-class StatusCounter:
-    def __init__(self, date, status):
-        self.date = date
-        self.status = status
-        self.count = 1
-    def send(self, date, status):
-        if self.status == status:
-            self.count += 1
+from collections import deque
+
+def print_timeout(addr, date_from, date_to):
+    print(f"{addr} has been timeout; from {date_from} to {date_to}")
+
+class Server:
+    def __init__(self, addr, timeout_torelance,
+                 overload_windowsize, overload_threashold):
+        self.addr = addr
+        self.timeout_torelance = timeout_torelance
+        self.overload_threashold = overload_threashold
+        self.delays = deque(maxlen=overload_windowsize)
+        self.timeout_count = 0
+        self.timeout_from = None
+    @property
+    def is_timeout(self):
+        return self.timeout_count >= self.timeout_torelance
+    def ping_timeout(self, date):
+        if self.timeout_count == 0:
+            self.timeout_from = date
+            self.timeout_count = 1
         else:
-            self.status = status
-            self.date = date
-            self.count = 1
+            self.timeout_count += 1
+    def print_timeout(self, date_to='now'):
+        addr = self.addr
+        date_from = self.timeout_from
+        print(f"{addr} has been timeout; from {date_from} to {date_to}")
+    def ping(self, date, delay):
+        if self.is_timeout:
+            self.print_timeout(date)
+        self.timeout_count = 0
+        self.timeout_from = None
 
 class ServerWatcher():
-    def __init__(self, timeout_torelance, overload_torelance):
-        self.timeout_torelance = timeout_torelance
-        self.overload_torelance = overload_torelance
-        self.known_servers = {}
-        self.watch_targets = {}
-        self.down_networks = {}
-    def is_timeout(self, addr):
-        if addr in self.watch_targets:
-            srv = self.watch_targets[addr]
-            return srv.status == 'timeout' and srv.count >= self.timeout_torelance
-        else:
-            return False
-    def is_overload(self, addr):
-        if addr in self.watch_targets:
-            srv = self.watch_targets[addr]
-            return srv.status == 'overload' and srv.count >= self.overload_torelance
-        else:
-            return False
-    def is_down(self, net):
-        return all(self.is_timeout(addr) for addr in self.known_servers[net])
-    def print_status(self, addr, date_to='now'):
-        srv = self.watch_targets[addr]
-        date_from = srv.date
-        if self.is_timeout(addr):
-            print(f"{addr} has been timeout; from {date_from} to {date_to}")
-        elif self.is_overload(addr):
-            print(f"{addr} has been overloaded; from {date_from} to {date_to}")
-    def print_network(self, net, date_to='now'):
-        date_from = self.down_networks[net]
-        print(f"Network {net} has been down from {date_from} to {date_to}")
-    def check_network(self, addr, date):
+    def __init__(self, timeout_torelance, overload_windowsize, overload_threashold):
+        self.servers = {}
+        self.new_server = lambda addr: Server(addr, timeout_torelance, overload_windowsize, overload_threashold)
+    def get_or_new_server(self, addr):
         net = addr.network
-        if net in self.known_servers:
-            self.known_servers[net].add(addr)
+        if net not in self.servers:
+            srv = self.new_server(addr)
+            self.servers[net] = {addr: srv}
+        if addr not in self.servers[net]:
+            srv = self.new_server(addr)
+            self.servers[net][addr] = srv
+        return self.servers[net][addr]
+    def ping(self, date, addr, resp=None):
+        srv = self.get_or_new_server(addr)
+        if resp:
+            srv.ping(date, resp)
         else:
-            self.known_servers[net] = {addr}
-        if self.is_down(net):
-            if net not in self.down_networks:
-                self.down_networks[net] = date
-        else:
-            if net in self.down_networks:
-                self.print_network(net, date)
-                del self.down_networks[net]
-    def ping_response(self, date, addr):
-        if addr in self.watch_targets:
-            self.print_status(addr, date)
-            del self.watch_targets[addr]
-        self.check_network(addr, date)
-    def ping_abnormal(self, date, addr, status):
-        if addr not in self.watch_targets:
-            srv = StatusCounter(date, status)
-            self.watch_targets[addr] = srv
-        else:
-            srv = self.watch_targets[addr]
-            if srv.status != status:
-                self.print_status(addr, date)
-            srv.send(date, status)
-        self.check_network(addr, date)
+            srv.ping_timeout(date)
     def finalize(self):
-        for addr in self.watch_targets:
-            self.print_status(addr)
-        for net in self.down_networks:
-            self.print_network(net)
+        for network in self.servers.values():
+            for srv in network.values():
+                if srv.is_timeout:
+                    srv.print_timeout()
