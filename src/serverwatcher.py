@@ -20,11 +20,11 @@ class Server:
     def print_timeout(self, date_to='now'):
         addr = self.addr
         date_from = self.timeout_from
-        print(f"{addr} has been timeout; from {date_from} to {date_to}")
+        print(f"{addr} has been timeout;\n\t from {date_from}\n\t to   {date_to}")
     def print_overload(self, date_to='now'):
         addr = self.addr
         date_from = self.overload_from
-        print(f"{addr} has been overloaded; from {date_from} to {date_to}")
+        print(f"{addr} has been overloaded;\n\t from {date_from}\n\t to   {date_to}")
     def ping_timeout(self, date):
         if self.timeout_count == 0:
             self.timeout_from = date
@@ -68,7 +68,7 @@ class ServerWatcher():
         self.check_network(date, addr.network)
     def print_network(self, net, date_to='now'):
         date_from = self.network_down_date[net]
-        print(f"Network {net} has been down from {date_from} to {date_to}")
+        print(f"Network {net} has been down\n\t from {date_from}\n\t to   {date_to}")
     def check_network(self, date, net):
         srvs_in_net = self.servers[net].values()
         net_is_down = all(srv.is_timeout for srv in srvs_in_net)
