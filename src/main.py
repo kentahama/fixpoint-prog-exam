@@ -5,30 +5,30 @@ class ServerWatcher():
     def __init__(self, timeout_torelance, overload_torelance):
         self.timeout_torelance = timeout_torelance
         self.overload_torelance = overload_torelance
-        self.servers = {}
+        self.watch_targets = {}
     def print_status(self, addr, date='now'):
-        srv = self.servers[addr]
-        time_from = srv.date
-        time_to = date
+        srv = self.watch_targets[addr]
+        date_from = srv.date
+        date_to = date
         if srv.status == 'timeout' and srv.count >= self.timeout_torelance:
-            print(f"{addr} has been down; from {time_from} to {time_to}")
+            print(f"{addr} has been down; from {date_from} to {date_to}")
         elif srv.status == 'overload' and srv.count >= self.overload_torelance:
-            print(f"{addr} has been overloaded; from {time_from} to {time_to}")
+            print(f"{addr} has been overloaded; from {date_from} to {date_to}")
     def ping_response(self, date, addr):
-        if addr in self.servers:
+        if addr in self.watch_targets:
             self.print_status(addr, date)
-            del self.servers[addr]
+            del self.watch_targets[addr]
     def ping_abnormal(self, date, addr, status):
-        if addr not in self.servers:
+        if addr not in self.watch_targets:
             srv = utils.StatusCounter(date, status)
-            self.servers[addr] = srv
+            self.watch_targets[addr] = srv
         else:
-            srv = self.servers[addr]
+            srv = self.watch_targets[addr]
             if srv.status != status:
                 self.print_status(addr, date)
             srv.send(status)
     def finalize(self):
-        for addr in self.servers:
+        for addr in self.watch_targets:
             self.print_status(addr)
 
 def main(argv):
